@@ -5,6 +5,8 @@
 go get github.com/wangxufire/m2clean@latest
 ```
 
+### OR Download [Click here](https://github.com/wangxufire/m2clean/releases)
+
 ### Usage
 ```
 $ m2clean -h    
