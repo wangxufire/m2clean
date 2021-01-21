@@ -12,7 +12,8 @@
       "program": "${workspaceFolder}/main.go",
       "args": [
         "--accessed-before",
-        "2020-06-06"
+        "2020-10-28",
+        "--dryrun"
       ]
     }
   ]
