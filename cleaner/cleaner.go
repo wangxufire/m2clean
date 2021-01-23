@@ -101,39 +101,36 @@ func Process() {
 				removeDir(path)
 			}
 		}
-		fmt.Println("***************************** All files are deleted done *****************************")
 		deleteDone <- true
 	}()
 
 	var size float32
-	sizeCh := make(chan string, 5)
-	sizeDone := make(chan bool)
-
-	go func() {
-		for path := range sizeCh {
-			size += dirSize(path)
-		}
-		sizeDone <- true
-	}()
-
 	dryrun := args.Args.Dryrun
+	sizeDone := make(chan bool)
 	for _, k := range keys {
-		files := processMap[k]
+		sizeCh := make(chan string, 5)
+		go func(ch <-chan string) {
+			for path := range ch {
+				size += dirSize(path)
+			}
+			sizeDone <- true
+		}(sizeCh)
+
 		var paths []string
-		for _, file := range files {
+		for _, file := range processMap[k] {
 			dir := filepath.Dir(file.path)
 			sizeCh <- dir
 			paths = append(paths, dir)
 		}
+		close(sizeCh)
+
 		sort.Sort(sort.StringSlice(paths))
 		fmt.Printf("\n%s", strings.Join(paths, "\n"))
-		if !dryrun {
+
+		if <-sizeDone && !dryrun {
 			deleteCh <- paths
 		}
 	}
-
-	close(sizeCh)
-	<-sizeDone
 
 	fmt.Printf("\n\n******************************* Total size %fM *******************************\n", size)
 
@@ -142,7 +139,10 @@ func Process() {
 		fmt.Println("************* No files were deleted as program was run in DRY-RUN mode **************")
 	} else {
 		<-deleteDone
+		fmt.Println("**************************** All files are deleted done *****************************")
 	}
+	close(sizeDone)
+	close(deleteDone)
 }
 
 func dirSize(path string) float32 {
