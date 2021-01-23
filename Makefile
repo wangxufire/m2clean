@@ -9,3 +9,6 @@ linux:
 
 win32:
 	env GOOS=windows GOARCH=amd64 go build -v -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY_NAME)_win32_amd64.exe
+
+clean:
+	rm -rf ./dist
