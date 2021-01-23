@@ -95,6 +95,7 @@ func Process() {
 
 	deleteCh := make(chan []string, 5)
 	deleteDone := make(chan bool)
+	defer close(deleteDone)
 	go func() {
 		for paths := range deleteCh {
 			for _, path := range paths {
@@ -107,6 +108,7 @@ func Process() {
 	var size float32
 	dryrun := args.Args.Dryrun
 	sizeDone := make(chan bool)
+	defer close(sizeDone)
 	for _, k := range keys {
 		sizeCh := make(chan string, 5)
 		go func(ch <-chan string) {
@@ -141,8 +143,6 @@ func Process() {
 		<-deleteDone
 		fmt.Println("**************************** All files are deleted done *****************************")
 	}
-	close(sizeDone)
-	close(deleteDone)
 }
 
 func dirSize(path string) float32 {
@@ -189,7 +189,7 @@ func process(fileInfo *m2FileInfo) {
 
 func resolveGroupID(artifactID, path string) string {
 	i1 := strings.Index(path, "repository") + 11
-	i2 := strings.LastIndex(path, artifactID) - 1
+	i2 := strings.Index(path, artifactID+separator) - 1
 	return strings.Join(strings.Split(path[i1:i2], separator), ".")
 }
 

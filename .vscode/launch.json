@@ -13,6 +13,12 @@
       "args": [
         "--accessed-before",
         "2020-12-24",
+        "--ignore-groups",
+        "com.datapipeline.webservice",
+        "-f",
+        "connect-json",
+        "-f",
+        "kafka-clients",
         "--dryrun"
       ]
     }
