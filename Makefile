@@ -1,6 +1,9 @@
 BINARY_NAME=m2clean
 LDFLAGS := -s -w
 
+install:
+	go install -v -trimpath -ldflags "$(LDFLAGS)"
+
 darwin:
 	env GOOS=darwin GOARCH=amd64 go build -v -trimpath -ldflags "$(LDFLAGS)" -o dist/$(BINARY_NAME)_darwin_amd64
 
