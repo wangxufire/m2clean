@@ -189,7 +189,7 @@ func process(fileInfo *m2FileInfo) {
 
 func resolveGroupID(artifactID, path string) string {
 	i1 := strings.Index(path, "repository") + 11
-	i2 := strings.Index(path, artifactID+separator) - 1
+	i2 := strings.LastIndex(path, artifactID+separator) - 1
 	return strings.Join(strings.Split(path[i1:i2], separator), ".")
 }
 
