@@ -29,9 +29,7 @@ func initVar() {
 	if args.Args.AccessedBefore == "" {
 		accesseBefore = time.Now().AddDate(0, -3, 0).Unix()
 	} else {
-		ab, err := time.Parse("2006-01-02", args.Args.AccessedBefore)
-		// ab, err := time.Parse("2006-01-02 15:04:05", args.Args.AccessedBefore+" 00:00:00")
-		if err == nil {
+		if ab, err := time.Parse("2006-01-02", args.Args.AccessedBefore); err == nil {
 			accesseBefore = ab.Unix()
 		}
 	}
@@ -42,7 +40,7 @@ func initVar() {
 		if err != nil {
 			log.Panic(err)
 		}
-		m2Repository = current.HomeDir + separator + ".m2/repository"
+		m2Repository = current.HomeDir + separator + ".m2" + separator + "repository"
 	}
 
 	ignoreGroups = args.Args.IgnoreGroups
@@ -95,28 +93,55 @@ func Process() {
 
 	fmt.Println("***************************** Directories to be deleted *****************************")
 
-	var filePaths []string
+	deleteCh := make(chan []string, 5)
+	deleteDone := make(chan bool)
+	go func() {
+		for paths := range deleteCh {
+			for _, path := range paths {
+				removeDir(path)
+			}
+		}
+		fmt.Println("***************************** All files are deleted done *****************************")
+		deleteDone <- true
+	}()
+
 	var size float32
+	sizeCh := make(chan string, 5)
+	sizeDone := make(chan bool)
+
+	go func() {
+		for path := range sizeCh {
+			size += dirSize(path)
+		}
+		sizeDone <- true
+	}()
+
+	dryrun := args.Args.Dryrun
 	for _, k := range keys {
 		files := processMap[k]
 		var paths []string
 		for _, file := range files {
 			dir := filepath.Dir(file.path)
-			size += dirSize(dir)
+			sizeCh <- dir
 			paths = append(paths, dir)
 		}
-		filePaths = append(filePaths, paths...)
 		sort.Sort(sort.StringSlice(paths))
 		fmt.Printf("\n%s", strings.Join(paths, "\n"))
-	}
-	fmt.Printf("\n\n******************************* Total size %fM *******************************\n", size)
-	if args.Args.Dryrun {
-		fmt.Println("************** No files were deleted as program was run in DRY-RUN mode **************")
-	} else {
-		for _, path := range filePaths {
-			removeDir(path)
+		if !dryrun {
+			deleteCh <- paths
 		}
-		fmt.Println("***************************** All files are deleted done *****************************")
+	}
+
+	close(sizeCh)
+	<-sizeDone
+
+	fmt.Printf("\n\n******************************* Total size %fM *******************************\n", size)
+
+	close(deleteCh)
+	if dryrun {
+		fmt.Println("************* No files were deleted as program was run in DRY-RUN mode **************")
+	} else {
+		<-deleteDone
 	}
 }
 
@@ -146,8 +171,7 @@ func removeDir(dir string) error {
 		return err
 	}
 	for _, name := range names {
-		err = os.RemoveAll(filepath.Join(dir, name))
-		if err != nil {
+		if err = os.RemoveAll(filepath.Join(dir, name)); err != nil {
 			return err
 		}
 	}
@@ -176,13 +200,13 @@ func resolveArtifactID(path string) string {
 
 func resolveM2File(fileInfo *m2FileInfo) *m2FileInfo {
 	fileInfo.composeM2FileInfo()
-	if mustIgnore(fileInfo) {
+	if fileInfo.mustIgnore() {
 		return nil
 	}
 	return fileInfo
 }
 
-func mustIgnore(info *m2FileInfo) bool {
+func (info *m2FileInfo) mustIgnore() bool {
 	var contains = func(elements []string, element string) bool {
 		for _, v := range elements {
 			if v == element {
@@ -203,17 +227,16 @@ func mustIgnore(info *m2FileInfo) bool {
 	return false
 }
 
-func (m2f *m2FileInfo) composeM2FileInfo() {
-	path := m2f.path
+func (info *m2FileInfo) composeM2FileInfo() {
+	path := info.path
 	artifactID := resolveArtifactID(path)
-	groupID := resolveGroupID(artifactID, path)
-	m2f.artifactID = artifactID
-	m2f.groupID = groupID
-	m2f.version = filepath.Dir(path)
+	info.artifactID = artifactID
+	info.groupID = resolveGroupID(artifactID, path)
+	info.version = filepath.Dir(path)
 }
 
 type m2FileInfo struct {
 	path                         string
 	file                         os.FileInfo
-	groupID, artifactID, version string
+	artifactID, groupID, version string
 }
