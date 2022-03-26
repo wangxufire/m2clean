@@ -2,7 +2,7 @@
 
 ### Install
 ```
-go get github.com/wangxufire/m2clean@latest
+go install github.com/wangxufire/m2clean@latest
 ```
 
 ### OR Download [Click here](https://github.com/wangxufire/m2clean/releases)
